@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QuizByte — Test Your Tech Knowledge</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #13131a;
+    --surface2: #1c1c26;
+    --border: #2a2a3a;
+    --accent: #7c6ffa;
+    --accent2: #fa6f6f;
+    --accent3: #6ffabd;
+    --text: #f0f0f8;
+    --muted: #7070a0;
+    --correct: #1a3a2a;
+    --correct-border: #4dff9e;
+    --correct-text: #4dff9e;
+    --wrong: #3a1a1a;
+    --wrong-border: #ff4d6a;
+    --wrong-text: #ff4d6a;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Syne', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(ellipse at 20% 20%, rgba(124,111,250,0.07) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 80%, rgba(111,250,189,0.05) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .wrapper {
+    width: 100%;
+    max-width: 680px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ---- SCREENS ---- */
+  .screen { display: none; animation: fadeUp 0.4s ease both; }
+  .screen.active { display: block; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(18px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ---- START SCREEN ---- */
+  .logo {
+    font-size: 13px;
+    font-family: 'Space Mono', monospace;
+    color: var(--accent);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-bottom: 2rem;
+  }
+
+  .hero-title {
+    font-size: clamp(2.5rem, 8vw, 4.5rem);
+    font-weight: 800;
+    line-height: 1.0;
+    letter-spacing: -0.02em;
+    margin-bottom: 1rem;
+  }
+
+  .hero-title span {
+    background: linear-gradient(135deg, var(--accent), var(--accent3));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .hero-sub {
+    font-size: 16px;
+    color: var(--muted);
+    line-height: 1.7;
+    max-width: 420px;
+    margin-bottom: 2.5rem;
+  }
+
+  .topic-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+    margin-bottom: 2rem;
+  }
+
+  .topic-btn {
+    padding: 10px 6px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface);
+    color: var(--muted);
+    font-family: 'Syne', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+  }
+
+  .topic-btn:hover { border-color: var(--accent); color: var(--text); }
+  .topic-btn.selected { border-color: var(--accent); background: rgba(124,111,250,0.15); color: var(--accent); }
+
+  .stats-row {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 2.5rem;
+  }
+
+  .stat-chip {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    padding: 6px 12px;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    background: var(--surface);
+  }
+
+  .start-btn {
+    width: 100%;
+    padding: 18px;
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 14px;
+    font-family: 'Syne', sans-serif;
+    font-size: 17px;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: 0.02em;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .start-btn::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(255,255,255,0);
+    transition: background 0.2s;
+  }
+
+  .start-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(124,111,250,0.4); }
+  .start-btn:active { transform: translateY(0); }
+
+  /* ---- QUIZ SCREEN ---- */
+  .quiz-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+  }
+
+  .q-count {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .timer-ring {
+    position: relative;
+    width: 52px;
+    height: 52px;
+  }
+
+  .timer-ring svg {
+    transform: rotate(-90deg);
+    width: 52px;
+    height: 52px;
+  }
+
+  .timer-ring .ring-bg {
+    fill: none;
+    stroke: var(--surface2);
+    stroke-width: 4;
+  }
+
+  .timer-ring .ring-fill {
+    fill: none;
+    stroke: var(--accent3);
+    stroke-width: 4;
+    stroke-linecap: round;
+    stroke-dasharray: 126;
+    stroke-dashoffset: 0;
+    transition: stroke-dashoffset 1s linear, stroke 0.3s;
+  }
+
+  .ring-fill.urgent { stroke: var(--accent2); }
+
+  .timer-num {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Space Mono', monospace;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .progress-track {
+    height: 3px;
+    background: var(--surface2);
+    border-radius: 3px;
+    margin-bottom: 2rem;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent3));
+    border-radius: 3px;
+    transition: width 0.4s ease;
+  }
+
+  .q-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-family: 'Space Mono', monospace;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    margin-bottom: 1rem;
+  }
+
+  .q-tag::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+
+  .q-text {
+    font-size: 20px;
+    font-weight: 600;
+    line-height: 1.5;
+    color: var(--text);
+    margin-bottom: 1.75rem;
+    letter-spacing: -0.01em;
+  }
+
+  .options {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .opt-btn {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 18px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    font-weight: 500;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .opt-label {
+    width: 26px;
+    height: 26px;
+    border-radius: 7px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    flex-shrink: 0;
+    transition: all 0.2s;
+  }
+
+  .opt-btn:hover:not(:disabled) {
+    border-color: var(--accent);
+    background: rgba(124,111,250,0.08);
+  }
+
+  .opt-btn:hover:not(:disabled) .opt-label {
+    background: rgba(124,111,250,0.2);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .opt-btn.correct {
+    background: var(--correct);
+    border-color: var(--correct-border);
+    color: var(--correct-text);
+  }
+
+  .opt-btn.correct .opt-label {
+    background: rgba(77,255,158,0.2);
+    border-color: var(--correct-border);
+    color: var(--correct-text);
+  }
+
+  .opt-btn.wrong {
+    background: var(--wrong);
+    border-color: var(--wrong-border);
+    color: var(--wrong-text);
+  }
+
+  .opt-btn.wrong .opt-label {
+    background: rgba(255,77,106,0.2);
+    border-color: var(--wrong-border);
+    color: var(--wrong-text);
+  }
+
+  .opt-btn:disabled { cursor: default; }
+
+  .explanation-box {
+    margin-top: 1.25rem;
+    padding: 14px 18px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent3);
+    border-radius: 0 12px 12px 0;
+    font-size: 14px;
+    color: var(--muted);
+    line-height: 1.7;
+    display: none;
+    animation: fadeUp 0.3s ease both;
+  }
+
+  .explanation-box strong { color: var(--accent3); font-weight: 600; }
+
+  .timeout-badge {
+    display: none;
+    text-align: center;
+    padding: 10px;
+    font-size: 13px;
+    font-family: 'Space Mono', monospace;
+    color: var(--accent2);
+    margin-top: 1rem;
+    animation: fadeUp 0.3s ease both;
+  }
+
+  .next-btn {
+    width: 100%;
+    margin-top: 1.5rem;
+    padding: 15px;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: none;
+    letter-spacing: 0.01em;
+  }
+
+  .next-btn:hover { border-color: var(--accent); color: var(--accent); background: rgba(124,111,250,0.06); }
+
+  /* ---- RESULT SCREEN ---- */
+  .result-head {
+    margin-bottom: 2rem;
+  }
+
+  .result-emoji {
+    font-size: 48px;
+    margin-bottom: 1rem;
+    display: block;
+  }
+
+  .result-title {
+    font-size: 2.5rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    margin-bottom: 0.5rem;
+  }
+
+  .result-sub {
+    font-size: 15px;
+    color: var(--muted);
+  }
+
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 2rem;
+  }
+
+  .metric-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 1.25rem 1rem;
+    text-align: center;
+  }
+
+  .metric-val {
+    font-size: 2rem;
+    font-weight: 800;
+    font-family: 'Space Mono', monospace;
+    color: var(--text);
+    letter-spacing: -0.02em;
+    margin-bottom: 4px;
+  }
+
+  .metric-val.good { color: var(--correct-text); }
+  .metric-val.bad { color: var(--wrong-text); }
+
+  .metric-lbl {
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-family: 'Space Mono', monospace;
+  }
+
+  .review-section { margin-bottom: 1.5rem; }
+
+  .review-label {
+    font-size: 11px;
+    font-family: 'Space Mono', monospace;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    margin-bottom: 1rem;
+  }
+
+  .review-items { display: flex; flex-direction: column; gap: 8px; }
+
+  .r-item {
+    padding: 12px 16px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    font-size: 13px;
+  }
+
+  .r-item.r-ok { border-color: rgba(77,255,158,0.3); background: rgba(77,255,158,0.05); }
+  .r-item.r-no { border-color: rgba(255,77,106,0.3); background: rgba(255,77,106,0.05); }
+
+  .r-q-text { color: var(--text); font-weight: 500; margin-bottom: 4px; font-size: 13px; }
+  .r-item.r-ok .r-q-text { color: var(--correct-text); }
+  .r-item.r-no .r-q-text { color: var(--wrong-text); }
+  .r-answer { color: var(--muted); font-size: 12px; font-family: 'Space Mono', monospace; }
+
+  .result-actions { display: flex; gap: 10px; }
+
+  .btn-retry {
+    flex: 1;
+    padding: 15px;
+    background: var(--accent);
+    border: none;
+    border-radius: 12px;
+    color: white;
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-retry:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(124,111,250,0.4); }
+
+  .btn-home {
+    flex: 1;
+    padding: 15px;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-home:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ---- RESPONSIVE ---- */
+  @media (max-width: 480px) {
+    .topic-grid { grid-template-columns: repeat(3, 1fr); }
+    .metrics-grid { grid-template-columns: repeat(3, 1fr); }
+    .hero-title { font-size: 2.2rem; }
+    .q-text { font-size: 17px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrapper">
+
+  <!-- START SCREEN -->
+  <div class="screen active" id="start-screen">
+    <div class="logo">QuizByte v1.0</div>
+    <h1 class="hero-title">Test Your<br><span>Tech Skills.</span></h1>
+    <p class="hero-sub">20 seconds per question. Instant explanations. Track your score. Built for CS students like you.</p>
+
+    <p style="font-size:12px; font-family:'Space Mono',monospace; color:var(--muted); text-transform:uppercase; letter-spacing:0.15em; margin-bottom:12px;">Pick a topic</p>
+    <div class="topic-grid">
+      <button class="topic-btn selected" data-topic="all">All</button>
+      <button class="topic-btn" data-topic="html">HTML/CSS</button>
+      <button class="topic-btn" data-topic="js">JS</button>
+      <button class="topic-btn" data-topic="python">Python</button>
+      <button class="topic-btn" data-topic="ds">DS / ML</button>
+    </div>
+
+    <div class="stats-row">
+      <span class="stat-chip">10 questions</span>
+      <span class="stat-chip">20s timer</span>
+      <span class="stat-chip">explanations included</span>
+    </div>
+
+    <button class="start-btn" id="start-btn">Start Quiz →</button>
+  </div>
+
+  <!-- QUIZ SCREEN -->
+  <div class="screen" id="quiz-screen">
+    <div class="quiz-header">
+      <div>
+        <div class="q-count" id="q-count">01 / 10</div>
+      </div>
+      <div class="timer-ring">
+        <svg viewBox="0 0 52 52">
+          <circle class="ring-bg" cx="26" cy="26" r="20"/>
+          <circle class="ring-fill" id="ring-fill" cx="26" cy="26" r="20"/>
+        </svg>
+        <div class="timer-num" id="timer-num">20</div>
+      </div>
+    </div>
+
+    <div class="progress-track">
+      <div class="progress-fill" id="progress-fill" style="width: 10%"></div>
+    </div>
+
+    <div class="q-tag" id="q-tag">JavaScript</div>
+    <p class="q-text" id="q-text">Question goes here</p>
+    <div class="options" id="options"></div>
+    <div class="timeout-badge" id="timeout-badge">⏱ Time's up! The correct answer is highlighted.</div>
+    <div class="explanation-box" id="explanation-box"></div>
+    <button class="next-btn" id="next-btn">Next Question →</button>
+  </div>
+
+  <!-- RESULT SCREEN -->
+  <div class="screen" id="result-screen">
+    <div class="result-head">
+      <span class="result-emoji" id="result-emoji">🎉</span>
+      <h2 class="result-title" id="result-title">Well Done!</h2>
+      <p class="result-sub" id="result-sub">You have a solid grasp of these topics.</p>
+    </div>
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <div class="metric-val" id="m-score">8/10</div>
+        <div class="metric-lbl">Score</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-val" id="m-pct">80%</div>
+        <div class="metric-lbl">Accuracy</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-val" id="m-time">9s</div>
+        <div class="metric-lbl">Avg Time</div>
+      </div>
+    </div>
+    <div class="review-section">
+      <div class="review-label">Review</div>
+      <div class="review-items" id="review-items"></div>
+    </div>
+    <div class="result-actions">
+      <button class="btn-retry" id="btn-retry">Try Again</button>
+      <button class="btn-home" id="btn-home">Change Topic</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const QUESTIONS = [
+  // HTML/CSS
+  {t:'html', tag:'HTML / CSS', q:'Which HTML tag defines an internal style sheet?', o:['<link>','<css>','<style>','<head>'], a:2, e:'The &lt;style&gt; tag goes inside &lt;head&gt; and lets you write CSS rules directly in your HTML file.'},
+  {t:'html', tag:'HTML / CSS', q:'Which CSS property is used to change the text color?', o:['font-color','text-color','color','foreground'], a:2, e:'The <strong>color</strong> property sets the text color. Example: color: red; or color: #ff0000;'},
+  {t:'html', tag:'HTML / CSS', q:'What does CSS stand for?', o:['Computer Style Sheets','Creative Style System','Cascading Style Sheets','Colorful Styling Script'], a:2, e:'CSS = <strong>Cascading Style Sheets</strong>. "Cascading" refers to how styles inherit and override each other.'},
+  {t:'html', tag:'HTML / CSS', q:'Which HTML attribute adds inline CSS to an element?', o:['class','style','css','theme'], a:1, e:'The <strong>style</strong> attribute: &lt;p style="color:red"&gt;. Use sparingly — external CSS files are better practice!'},
+  {t:'html', tag:'HTML / CSS', q:'Which CSS value makes a div fill its parent\'s full width?', o:['inline','block','flex','grid'], a:1, e:'<strong>display: block</strong> makes an element take up the full available width. It\'s the default for divs.'},
+  {t:'html', tag:'HTML / CSS', q:'Which tag creates a hyperlink in HTML?', o:['<link>','<href>','<a>','<url>'], a:2, e:'The <strong>&lt;a&gt;</strong> (anchor) tag creates hyperlinks. Use the href attribute: &lt;a href="url"&gt;Click&lt;/a&gt;'},
+  {t:'html', tag:'HTML / CSS', q:'Which CSS property creates space inside an element\'s border?', o:['margin','spacing','padding','border-gap'], a:2, e:'<strong>padding</strong> is inside the border. <strong>margin</strong> is outside the border. Remember: padding = personal space inside!'},
+  {t:'html', tag:'HTML / CSS', q:'Which HTML5 tag defines the main navigation links?', o:['<menu>','<nav>','<header>','<links>'], a:1, e:'The <strong>&lt;nav&gt;</strong> tag is a semantic HTML5 element specifically for navigation menus.'},
+
+  // JavaScript
+  {t:'js', tag:'JavaScript', q:'Which keyword declares a variable that cannot be reassigned?', o:['var','let','const','fixed'], a:2, e:'<strong>const</strong> prevents reassignment. Note: objects/arrays declared with const can still be mutated internally.'},
+  {t:'js', tag:'JavaScript', q:'What does typeof null return in JavaScript?', o:['"null"','"undefined"','"object"','"empty"'], a:2, e:'A famous JS bug! <strong>typeof null === "object"</strong> — this has existed since JS v1 and can\'t be fixed for backward compatibility.'},
+  {t:'js', tag:'JavaScript', q:'Which array method adds an element to the END?', o:['unshift()','shift()','push()','append()'], a:2, e:'<strong>push()</strong> adds to end. unshift() adds to start. pop() removes from end. shift() removes from start.'},
+  {t:'js', tag:'JavaScript', q:'What does the === operator check?', o:['Only value','Only type','Both value and type','Neither'], a:2, e:'<strong>===</strong> is strict equality — checks value AND type without coercion. 5 === "5" is false. Use === over == always!'},
+  {t:'js', tag:'JavaScript', q:'Which method converts a JSON string to a JS object?', o:['JSON.stringify()','JSON.parse()','JSON.convert()','JSON.decode()'], a:1, e:'<strong>JSON.parse()</strong> converts JSON string → JS object. JSON.stringify() does the reverse (JS object → JSON string).'},
+  {t:'js', tag:'JavaScript', q:'What is the result of 0.1 + 0.2 === 0.3 in JavaScript?', o:['true','false','undefined','NaN'], a:1, e:'<strong>false!</strong> Floating point math: 0.1 + 0.2 = 0.30000000000000004. This is a quirk of IEEE 754 binary floating point.'},
+  {t:'js', tag:'JavaScript', q:'Which method removes the last element of an array?', o:['push()','shift()','pop()','splice()'], a:2, e:'<strong>pop()</strong> removes and returns the last element. push() adds to end. shift() removes first. unshift() adds to start.'},
+  {t:'js', tag:'JavaScript', q:'What does NaN stand for in JavaScript?', o:['Null and Nothing','Not a Number','New and Null','No Assigned Name'], a:1, e:'<strong>NaN = Not a Number</strong>. Produced by invalid math like parseInt("hello"). Weirdly, typeof NaN === "number".'},
+
+  // Python
+  {t:'python', tag:'Python', q:'Which keyword defines a function in Python?', o:['function','define','func','def'], a:3, e:'Python uses <strong>def</strong> to define functions. Example: def my_function(): — no curly braces, just indentation!'},
+  {t:'python', tag:'Python', q:'What does print(type([])) output?', o:["<class 'list'>",'[]',"<class 'array'>",'list'], a:0, e:'<strong>&lt;class \'list\'&gt;</strong>. [] creates a list. type() returns the class type of any object in Python.'},
+  {t:'python', tag:'Python', q:'Which block handles exceptions in Python?', o:['try/catch','try/except','if/error','try/handle'], a:1, e:'Python uses <strong>try/except</strong>, not try/catch like Java or JS. Example: except ValueError as e: print(e)'},
+  {t:'python', tag:'Python', q:'What is the output of len("python")?', o:['5','6','7','error'], a:1, e:'<strong>6</strong>. len() counts characters: p-y-t-h-o-n = 6 characters. Works on strings, lists, tuples, dicts!'},
+  {t:'python', tag:'Python', q:'Which Python data type is immutable?', o:['List','Dictionary','Tuple','Set'], a:2, e:'<strong>Tuples</strong> are immutable — elements cannot be changed after creation. Lists, dicts, and sets are mutable.'},
+  {t:'python', tag:'Python', q:'How do you start a comment in Python?', o:['//','/* */','#','--'], a:2, e:'Python uses <strong>#</strong> for single-line comments. For multi-line, use triple quotes """ or \'\'\'. No // like in JS/Java!'},
+  {t:'python', tag:'Python', q:'What does the range(5) function return in Python?', o:['[1,2,3,4,5]','[0,1,2,3,4,5]','[0,1,2,3,4]','(0,1,2,3,4)'], a:2, e:'<strong>range(5)</strong> generates 0 to 4 — it starts at 0 and stops BEFORE 5. range(1,6) would give 1 to 5.'},
+  {t:'python', tag:'Python', q:'Which operator is used for floor division in Python?', o:['/','%','//','**'], a:2, e:'<strong>//</strong> is floor division: 7//2 = 3. / gives float: 7/2 = 3.5. % is modulo. ** is exponent.'},
+
+  // Data Science / ML
+  {t:'ds', tag:'Data Science', q:'Which Python library is mainly used for data manipulation?', o:['NumPy','Matplotlib','Pandas','Scikit-learn'], a:2, e:'<strong>Pandas</strong> provides DataFrames for data manipulation. NumPy = arrays/math. Matplotlib = charts. Sklearn = ML models.'},
+  {t:'ds', tag:'Data Science', q:'What does SQL stand for?', o:['Simple Query List','Structured Query Language','Secure Query Logic','Standard Query Library'], a:1, e:'<strong>SQL = Structured Query Language</strong>. Used to manage and query relational databases like MySQL, PostgreSQL, SQLite.'},
+  {t:'ds', tag:'Data Science', q:'Which is a supervised learning algorithm?', o:['K-Means Clustering','PCA','Linear Regression','DBSCAN'], a:2, e:'<strong>Linear Regression</strong> is supervised (needs labeled data). K-Means, PCA, DBSCAN are all unsupervised (no labels needed).'},
+  {t:'ds', tag:'Data Science', q:'What does DBMS stand for?', o:['Data Backup Management System','Database Management System','Digital Binary Merge System','Data Block Memory Store'], a:1, e:'<strong>DBMS = Database Management System</strong>. Software to create, read, update, delete data. Examples: MySQL, Oracle, MongoDB.'},
+  {t:'ds', tag:'Data Science', q:'Which library is used for creating charts in Python?', o:['Pandas','NumPy','Matplotlib','Scikit-learn'], a:2, e:'<strong>Matplotlib</strong> is Python\'s core plotting library. Seaborn and Plotly are built on top of it for prettier charts!'},
+  {t:'ds', tag:'Data Science', q:'What is a DataFrame in Pandas?', o:['A 1D array','A 2D table with rows and columns','A chart object','A machine learning model'], a:1, e:'A <strong>DataFrame</strong> is a 2D labeled data structure (like an Excel table) with rows and columns. It\'s the heart of Pandas!'},
+  {t:'ds', tag:'Data Science', q:'Which SQL command retrieves data from a table?', o:['INSERT','UPDATE','SELECT','DELETE'], a:2, e:'<strong>SELECT</strong> retrieves data. INSERT adds rows. UPDATE modifies rows. DELETE removes rows. SELECT * FROM table is the most common query!'},
+  {t:'ds', tag:'Data Science', q:'What does OOP stand for?', o:['Object-Oriented Programming','Open Object Processing','Optimal Output Processing','Online Object Protocol'], a:0, e:'<strong>OOP = Object-Oriented Programming</strong>. Core concepts: Class, Object, Inheritance, Encapsulation, Polymorphism, Abstraction.'},
+];
+
+const LABELS = ['A','B','C','D'];
+let topic = 'all', questions = [], cur = 0, score = 0;
+let userAnswers = [], timeTaken = [], timerInterval = null, timeLeft = 20;
+let tStart = 0;
+
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s => { s.classList.remove('active'); s.style.animation = 'none'; });
+  const el = document.getElementById(id);
+  el.style.animation = '';
+  void el.offsetWidth;
+  el.classList.add('active');
+}
+
+function shuffle(arr) { return [...arr].sort(() => Math.random() - 0.5); }
+
+function getQuestions(t) {
+  const pool = t === 'all' ? QUESTIONS : QUESTIONS.filter(q => q.t === t);
+  return shuffle(pool).slice(0, 10);
+}
+
+document.querySelectorAll('.topic-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.topic-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    topic = btn.dataset.topic;
+  });
+});
+
+document.getElementById('start-btn').addEventListener('click', startQuiz);
+document.getElementById('next-btn').addEventListener('click', nextQ);
+document.getElementById('btn-retry').addEventListener('click', () => startQuiz());
+document.getElementById('btn-home').addEventListener('click', () => show('start-screen'));
+
+function startQuiz() {
+  questions = getQuestions(topic);
+  cur = 0; score = 0; userAnswers = []; timeTaken = [];
+  show('quiz-screen');
+  loadQ();
+}
+
+function loadQ() {
+  const q = questions[cur];
+  document.getElementById('q-count').textContent = String(cur + 1).padStart(2,'0') + ' / ' + String(questions.length).padStart(2,'0');
+  document.getElementById('progress-fill').style.width = ((cur + 1) / questions.length * 100) + '%';
+  document.getElementById('q-tag').textContent = q.tag;
+  document.getElementById('q-text').textContent = q.q;
+  document.getElementById('explanation-box').style.display = 'none';
+  document.getElementById('timeout-badge').style.display = 'none';
+  document.getElementById('next-btn').style.display = 'none';
+
+  const opts = document.getElementById('options');
+  opts.innerHTML = '';
+  q.o.forEach((opt, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'opt-btn';
+    btn.innerHTML = `<span class="opt-label">${LABELS[i]}</span>${opt}`;
+    btn.addEventListener('click', () => selectAns(i));
+    opts.appendChild(btn);
+  });
+
+  timeLeft = 20;
+  updateRing(20);
+  clearInterval(timerInterval);
+  tStart = Date.now();
+  timerInterval = setInterval(() => {
+    timeLeft--;
+    updateRing(timeLeft);
+    if (timeLeft <= 0) { clearInterval(timerInterval); handleTimeout(); }
+  }, 1000);
+}
+
+function updateRing(t) {
+  const fill = document.getElementById('ring-fill');
+  const num = document.getElementById('timer-num');
+  const circumference = 126;
+  const offset = circumference - (t / 20) * circumference;
+  fill.style.strokeDashoffset = offset;
+  fill.className = t <= 5 ? 'ring-fill urgent' : 'ring-fill';
+  num.textContent = t;
+}
+
+function handleTimeout() {
+  timeTaken.push(20);
+  userAnswers.push(-1);
+  disableOpts();
+  highlightCorrect();
+  document.getElementById('timeout-badge').style.display = 'block';
+  showExp();
+  showNext();
+}
+
+function selectAns(idx) {
+  clearInterval(timerInterval);
+  const elapsed = Math.min(Math.round((Date.now() - tStart) / 1000), 20);
+  timeTaken.push(elapsed);
+  userAnswers.push(idx);
+  disableOpts();
+  const btns = document.querySelectorAll('.opt-btn');
+  if (idx === questions[cur].a) {
+    btns[idx].classList.add('correct');
+    score++;
+  } else {
+    btns[idx].classList.add('wrong');
+    highlightCorrect();
+  }
+  showExp();
+  showNext();
+}
+
+function disableOpts() { document.querySelectorAll('.opt-btn').forEach(b => b.disabled = true); }
+function highlightCorrect() { document.querySelectorAll('.opt-btn')[questions[cur].a].classList.add('correct'); }
+
+function showExp() {
+  const el = document.getElementById('explanation-box');
+  el.innerHTML = questions[cur].e;
+  el.style.display = 'block';
+}
+
+function showNext() {
+  const btn = document.getElementById('next-btn');
+  btn.style.display = 'block';
+  btn.textContent = cur + 1 < questions.length ? 'Next Question →' : 'See Results →';
+}
+
+function nextQ() {
+  cur++;
+  if (cur < questions.length) loadQ();
+  else showResults();
+}
+
+function showResults() {
+  clearInterval(timerInterval);
+  const pct = Math.round(score / questions.length * 100);
+  const avg = Math.round(timeTaken.reduce((a,b)=>a+b,0) / timeTaken.length);
+
+  const emojis = ['😓','😅','🙂','😊','🔥'];
+  const titles = ['Keep Practicing!','Not Bad!','Good Work!','Well Done!','Outstanding!'];
+  const subs = ['Review the explanations and try again.','A bit more practice and you\'ll nail it!','You\'re getting there — solid effort!','You have a good grasp of these topics.','Exceptional! You clearly know your stuff!'];
+  const tier = Math.min(Math.floor(pct / 25), 4);
+
+  document.getElementById('result-emoji').textContent = emojis[tier];
+  document.getElementById('result-title').textContent = titles[tier];
+  document.getElementById('result-sub').textContent = subs[tier];
+
+  const mScore = document.getElementById('m-score');
+  mScore.textContent = score + '/' + questions.length;
+  mScore.className = 'metric-val ' + (pct >= 70 ? 'good' : pct < 40 ? 'bad' : '');
+
+  const mPct = document.getElementById('m-pct');
+  mPct.textContent = pct + '%';
+  mPct.className = 'metric-val ' + (pct >= 70 ? 'good' : pct < 40 ? 'bad' : '');
+
+  document.getElementById('m-time').textContent = avg + 's';
+
+  const list = document.getElementById('review-items');
+  list.innerHTML = '';
+  questions.forEach((q, i) => {
+    const ua = userAnswers[i];
+    const ok = ua === q.a;
+    const div = document.createElement('div');
+    div.className = 'r-item ' + (ok ? 'r-ok' : 'r-no');
+    const ansText = ua === -1 ? `Timed out — Answer: ${q.o[q.a]}` : ok ? 'Correct' : `Your answer: ${q.o[ua]} — Correct: ${q.o[q.a]}`;
+    div.innerHTML = `<div class="r-q-text">${i+1}. ${q.q}</div><div class="r-answer">${ansText}</div>`;
+    list.appendChild(div);
+  });
+
+  show('result-screen');
+}
+</script>
+</body>
+</html>
